@@ -475,10 +475,14 @@ export class Account {
         blockHeightTtl,
         receiverId,
     }: SignedDelegateOptions): Promise<SignedDelegate> {
-        const { provider, signer } = this.connection;
+        const { networkId, provider, signer } = this.connection;
         const { header } = await provider.block({ finality: 'final' });
-        const { accessKey, publicKey } = await this.findAccessKey(null, null);
+        const accountAccessKey = await this.findAccessKey(null, null);
+        if (!accountAccessKey) {
+            throw new TypedError(`Can not sign transactions for account ${this.accountId} on network ${networkId}, no matching key pair exists for this account`, 'KeyNotFound');
+        }
 
+        const { accessKey, publicKey } = accountAccessKey;
         const delegateAction = buildDelegateAction({
             actions,
             maxBlockHeight: new BN(header.height).add(new BN(blockHeightTtl)),
