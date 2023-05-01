@@ -25,6 +25,43 @@ export class DelegateAction extends Assignable {
     publicKey: PublicKey;
 }
 
+// TODO deprecate usage of (undocumented?) POJO interface for actions and remove this method
+function parseActions(actions: Array<Action> | Array<{ type: string, params: any }>): Array<Action> {
+    return actions.map((action) => {
+        if (action.params && action.type) {
+            const { params } = action;
+            switch (action.type) {
+                case 'AddKey': {
+                    return addKey(params.publicKey, params.accessKey);
+                }
+                case 'CreateAccount': {
+                    return createAccount();
+                }
+                case 'DeleteAccount': {
+                    return deleteAccount(params.deleteAccount);
+                }
+                case 'DeleteKey': {
+                    return deleteKey(params.publicKey);
+                }
+                case 'DeployContract': {
+                    return deployContract(params.code);
+                }
+                case 'FunctionCall': {
+                    return functionCall(params.methodName, params.args, params.gas, params.deposit);
+                }
+                case 'Stake': {
+                    return stake(params.stake, params.publicKey);
+                }
+                case 'Transfer': {
+                    return transfer(params.deposit);
+                }
+            }
+        }
+
+        return action;
+    });
+}
+
 /**
  * Compose a delegate action for inclusion with a meta transaction signed on the sender's behalf
  * @params.actions The set of actions to be included in the meta transaction
@@ -45,53 +82,7 @@ export function buildDelegateAction({
     return new DelegateAction({
         senderId,
         receiverId,
-        actions: actions.map((a) => {
-            // @ts-expect-error type workaround
-            if (!a.type && !a.params) {
-                return a;
-            }
-
-            // @ts-expect-error type workaround
-            switch (a.type) {
-                case 'AddKey': {
-                    // @ts-expect-error type workaround
-                    const { publicKey, accessKey } = a.params;
-                    return addKey(publicKey, accessKey);
-                }
-                case 'CreateAccount': {
-                    // @ts-expect-error type workaround
-                    return createAccount(a.params.createAccount);
-                }
-                case 'DeleteAccount': {
-                    // @ts-expect-error type workaround
-                    return deleteAccount(a.params.deleteAccount);
-                }
-                case 'DeleteKey': {
-                    // @ts-expect-error type workaround
-                    return deleteKey(a.params.publicKey);
-                }
-                case 'DeployContract': {
-                    // @ts-expect-error type workaround
-                    return deployContract(a.params.code);
-                }
-                case 'FunctionCall': {
-                    // @ts-expect-error type workaround
-                    const { methodName, args, gas, deposit } = a.params;
-                    return functionCall(methodName, args, gas, deposit);
-                }
-                case 'Stake': {
-                    // @ts-expect-error type workaround
-                    return stake(a.params.stake, a.params.publicKey);
-                }
-                case 'Transfer': {
-                    // @ts-expect-error type workaround
-                    const { deposit } = a.params;
-                    return transfer(deposit);
-                }
-            }
-
-            throw new Error('Unrecognized action');
-        }),
+        actions: parseActions(actions),
         nonce,
         maxBlockHeight,
         publicKey,
